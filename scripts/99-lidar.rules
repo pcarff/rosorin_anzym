@@ -1,0 +1,5 @@
+KERNEL=="ttyCH341USB*", SYMLINK+="lidar", MODE="0666"
+SUBSYSTEM=="tty", KERNELS=="1-2.2:1.0", SYMLINK+="lidar", MODE="0666"
+SUBSYSTEM=="tty", KERNELS=="1-2.3.4:1.0", SYMLINK+="lidar", MODE="0666"
+SUBSYSTEM=="tty", KERNELS=="1-2.1.4:1.0", SYMLINK+="lidar", MODE="0666"
+ATTRS{idVendor}=="1a86", ATTRS{idProduct}=="7523", SYMLINK+="lidar", MODE="0666"

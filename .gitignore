@@ -1,0 +1,31 @@
+# Build and install directories
+build/
+install/
+log/
+*.log
+
+# Vendor reference materials and large installers/zips
+HiWonder/
+
+# Python cache & compiled files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Large binary files & archives
+*.zip
+*.tar.gz
+*.exe
+*.iso
+*.dmg
+
+# Editor and IDE settings
+.vscode/
+.idea/
+.DS_Store
+
+# Temporary scratch and backup files
+*.swp
+*.bak
+/tmp/

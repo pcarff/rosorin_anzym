@@ -1,0 +1,17 @@
+[Unit]
+Description=ROSOrin Ackermann Robot Automatic Bringup Service
+After=multi-user.target network.target local-fs.target
+
+[Service]
+Type=simple
+User=pcarff
+WorkingDirectory=/home/pcarff/anzym_robot_ws
+Environment="MACHINE_TYPE=ROSOrin_Acker"
+Environment="HOME=/home/pcarff"
+ExecStart=/bin/bash /home/pcarff/anzym_robot_ws/scripts/bringup_robot.sh
+Restart=always
+RestartSec=5
+KillMode=mixed
+
+[Install]
+WantedBy=multi-user.target
