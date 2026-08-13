@@ -214,7 +214,7 @@ class Controller(Node):
         self.cmd_vel_callback(msg)
 
     def cmd_vel_callback(self, msg):
-        if self.machine_type != 'ROSOrin_Acker':
+        if 'Acker' not in self.machine_type:
             if  'Mecanum' in self.machine_type:
                 self.linear_x = msg.linear.x
                 self.linear_y = msg.linear.y
@@ -225,7 +225,7 @@ class Controller(Node):
                 self.angular_z = msg.angular.z
             speeds = self.mecanum.set_velocity(self.linear_x, self.linear_y, self.angular_z)
             self.motor_pub.publish(speeds)
-        elif self.machine_type == 'ROSOrin_Acker':
+        else:
             self.linear_x = msg.linear.x
             self.linear_y = 0.0
             self.angular_z = msg.angular.z

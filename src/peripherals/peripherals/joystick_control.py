@@ -43,7 +43,7 @@ class JoystickController(Node):
         self.servo_state_pub = self.create_publisher(SetPWMServoState, '/ros_robot_controller/pwm_servo/set_state', 1)
         self.joy_sub = self.create_subscription(Joy, '/ros_robot_controller/joy', self.joy_callback, 1)
         self.buzzer_pub = self.create_publisher(BuzzerState, '/ros_robot_controller/set_buzzer', 1)
-        self.mecanum_pub = self.create_publisher(Twist, '/controller/cmd_vel', 1)
+        self.mecanum_pub = self.create_publisher(Twist, '/controller/cmd_vel_local', 1)
 
 
         self.last_axes = dict(zip(AXES_MAP, [0.0, ] * len(AXES_MAP)))

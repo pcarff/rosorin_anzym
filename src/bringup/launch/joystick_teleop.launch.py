@@ -52,6 +52,27 @@ def generate_launch_description():
         ]
     )
 
+    # 3.4 Rosbridge WebSocket Server Node (for GCS network connection)
+    rosbridge_node = Node(
+        package='rosbridge_server',
+        executable='rosbridge_websocket',
+        name='rosbridge_websocket',
+        output='screen',
+        parameters=[{'port': 9090, 'address': '0.0.0.0'}]
+    )
+
+    # 3.5 Teleop Mode Switcher & Heartbeat Watchdog Node
+    teleop_mode_switcher_node = Node(
+        package='peripherals',
+        executable='teleop_mode_switcher',
+        name='teleop_mode_switcher',
+        output='screen',
+        parameters=[
+            {'default_mode': 'LOCAL',
+             'heartbeat_timeout_sec': 3.0}
+        ]
+    )
+
     # 4. OLED Info Display Node (shows live IP address, hostname, battery voltage, and CPU temp)
     oled_node = Node(
         package='bringup',
@@ -103,6 +124,8 @@ def generate_launch_description():
         driver_node,
         motor_steering_node,
         joystick_node,
+        rosbridge_node,
+        teleop_mode_switcher_node,
         oled_node,
         camera_launch,
         lidar_node,
