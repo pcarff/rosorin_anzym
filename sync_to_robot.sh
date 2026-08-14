@@ -6,7 +6,7 @@
 
 REMOTE_HOST="rosorin"
 REMOTE_DIR="~/anzym_robot_ws"
-LOCAL_DIR="/home/pcarff/Workspaces/AnZym_ROSOrin"
+LOCAL_DIR="/home/pcarff/Workspaces/anzym_rosorin"
 
 # Color output helpers
 GREEN='\033[0;32m'

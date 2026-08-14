@@ -61,6 +61,13 @@ def generate_launch_description():
         parameters=[{'port': 9090, 'address': '0.0.0.0'}]
     )
 
+    rosapi_node = Node(
+        package='rosapi',
+        executable='rosapi_node',
+        name='rosapi',
+        output='screen'
+    )
+
     # 3.5 Teleop Mode Switcher & Heartbeat Watchdog Node
     teleop_mode_switcher_node = Node(
         package='peripherals',
@@ -125,6 +132,7 @@ def generate_launch_description():
         motor_steering_node,
         joystick_node,
         rosbridge_node,
+        rosapi_node,
         teleop_mode_switcher_node,
         oled_node,
         camera_launch,
