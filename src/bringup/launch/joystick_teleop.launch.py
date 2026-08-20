@@ -125,6 +125,26 @@ def generate_launch_description():
         arguments=['0.115', '0', '0.13', '0', '0', '0', 'base_link', 'lidar_frame']
     )
 
+    # 6. Web Video Server for GCS streaming
+    web_video_server_node = Node(
+        package="web_video_server",
+        executable="web_video_server",
+        name="web_video_server",
+        output="screen",
+        parameters=[{
+            "port": 8080,
+            "address": "0.0.0.0"
+        }]
+    )
+
+    # 7. Vehicle Core Telemetry & Failsafe Node
+    telemetry_node = Node(
+        package="vehicle_core",
+        executable="telemetry_node",
+        name="telemetry_node",
+        output="screen",
+    )
+
     return LaunchDescription([
         enable_camera_arg,
         enable_lidar_arg,
@@ -138,4 +158,6 @@ def generate_launch_description():
         camera_launch,
         lidar_node,
         lidar_tf_node,
+        web_video_server_node,
+        telemetry_node,
     ])
