@@ -18,7 +18,7 @@ else
 fi
 
 export MACHINE_TYPE="ROSOrin_Acker"
-export FASTRTPS_DEFAULT_PROFILES_FILE="$HOME/anzym_robot_ws/fastdds_wifi.xml"
+export ROS_DOMAIN_ID="${ROS_DOMAIN_ID:-0}"
 
 echo "Starting ROSOrin Ackermann Robot (Hardware, Motors, Steering, Joystick, OLED)..."
 ros2 launch bringup joystick_teleop.launch.py

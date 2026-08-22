@@ -4,21 +4,25 @@
 Teleop Mode Switcher & Zero-Latency Command Router for AnZym_ROSOrin.
 
 Multiplexes velocity commands (/controller/cmd_vel) between:
- 1. LOCAL_DIRECT: Onboard wireless joystick controller (/controller/cmd_vel_local)
- 2. GCS_REMOTE: GCS Bluetooth joystick teleop over rosbridge (/gcs/cmd_vel)
+ 1. LOCAL: Onboard wireless joystick controller (/controller/cmd_vel_local)
+ 2. GCS_REMOTE: GCS Bluetooth/Web joystick teleop over rosbridge (/gcs/cmd_vel)
 
 Optimization:
- Queue size depth=1 to eliminate buffering latency (~0.5s delay fixed).
+ - Queue size depth=1 to eliminate buffering latency.
+ - Non-blocking asynchronous threads for background beacon registration.
+ - Periodic status publisher for GCS synchronization.
 
 Fail-Safe Behavior:
  If GCS connection or heartbeat stops for >3 seconds while in GCS_REMOTE mode,
- the node automatically reverts to LOCAL_DIRECT mode and triggers a buzzer alert.
+ the node automatically halts the robot (zero Twist), reverts to LOCAL mode,
+ and triggers an audible buzzer alert.
 """
 
 import os
 import time
 import socket
 import json
+import threading
 import urllib.request
 import rclpy
 from rclpy.node import Node
@@ -39,15 +43,16 @@ class TeleopModeSwitcher(Node):
         self.declare_parameter('gcs_host', os.environ.get('GCS_HOST', 'localhost'))
 
         self.mode = self.get_parameter('default_mode').value.upper()
-        self.heartbeat_timeout = self.get_parameter('heartbeat_timeout_sec').value
-        self.gcs_host = self.get_parameter('gcs_host').value
+        self.heartbeat_timeout = float(self.get_parameter('heartbeat_timeout_sec').value)
+        self.gcs_host = str(self.get_parameter('gcs_host').value)
         self.last_gcs_msg_time = 0.0
 
-        # Zero-latency queue size depth=1
+        # Zero-latency publishers
         self.cmd_vel_pub = self.create_publisher(Twist, '/controller/cmd_vel', 1)
         self.buzzer_pub = self.create_publisher(BuzzerState, '/ros_robot_controller/set_buzzer', 1)
         self.mode_status_pub = self.create_publisher(String, '/teleop_mode_status', 1)
 
+        # Subscriptions
         self.local_joy_sub = self.create_subscription(
             Twist, '/controller/cmd_vel_local', self.local_cmd_callback, 1
         )
@@ -60,28 +65,37 @@ class TeleopModeSwitcher(Node):
             SetBool, '/set_teleop_mode', self.handle_set_teleop_mode
         )
 
-        # Heartbeat watchdog timer (checks every 0.5s)
-        self.watchdog_timer = self.create_timer(0.5, self.watchdog_check)
+        # Heartbeat watchdog timer (checks every 0.2s)
+        self.watchdog_timer = self.create_timer(0.2, self.watchdog_check)
 
-        # GCS Auto-Beacon Registration Timer (attempts registration every 5s)
-        self.beacon_timer = self.create_timer(5.0, self.gcs_beacon_register)
+        # Periodic status heartbeat publisher (1 Hz)
+        self.status_timer = self.create_timer(1.0, self.publish_status)
+
+        # Non-blocking GCS Auto-Beacon Registration Timer (every 10s in background thread)
+        self.beacon_timer = self.create_timer(10.0, self.trigger_async_beacon)
 
         self.get_logger().info(
             f'Teleop Mode Switcher initialized with zero-latency queue. Default Mode: {self.mode}'
         )
 
+    def publish_status(self):
+        """Publish current mode on /teleop_mode_status."""
+        msg = String()
+        msg.data = self.mode
+        self.mode_status_pub.publish(msg)
+
     def handle_set_teleop_mode(self, request, response):
-        """Service callback: data=True -> GCS_REMOTE, data=False -> LOCAL_DIRECT."""
+        """Service callback: data=True -> GCS_REMOTE, data=False -> LOCAL."""
         new_mode = 'GCS_REMOTE' if request.data else 'LOCAL'
         self.mode = new_mode
-        self.mode_status_pub.publish(String(data=self.mode))
         self.last_gcs_msg_time = time.time()
+        self.publish_status()
         
         response.success = True
         response.message = f'Teleop mode set to {self.mode}'
         self.get_logger().info(response.message)
 
-        # Sound buzzer notification
+        # Sound buzzer notification non-blockingly
         self.trigger_buzzer(freq=3000 if request.data else 1500, repeat=1)
         return response
 
@@ -97,20 +111,27 @@ class TeleopModeSwitcher(Node):
             self.cmd_vel_pub.publish(msg)
 
     def watchdog_check(self):
-        """Check GCS heartbeat timeout. Fallback to LOCAL mode if GCS drops."""
+        """Check GCS heartbeat timeout. Fallback to LOCAL mode and stop robot if GCS drops."""
         if self.mode == 'GCS_REMOTE':
             elapsed = time.time() - self.last_gcs_msg_time
             if elapsed > self.heartbeat_timeout:
                 self.get_logger().warn(
                     f'GCS teleop heartbeat timeout ({elapsed:.1f}s > {self.heartbeat_timeout}s). '
-                    f'Reverting to LOCAL direct joystick mode!'
+                    f'Reverting to LOCAL direct joystick mode and halting motors!'
                 )
                 self.mode = 'LOCAL'
-                self.mode_status_pub.publish(String(data=self.mode))
-                self.trigger_buzzer(freq=1000, repeat=3)
+                # Publish safe halt
+                stop_twist = Twist()
+                self.cmd_vel_pub.publish(stop_twist)
+                self.publish_status()
+                self.trigger_buzzer(freq=1000, repeat=2)
 
-    def gcs_beacon_register(self):
-        """Attempt auto-registration with GCS backend if GCS host is reachable."""
+    def trigger_async_beacon(self):
+        """Spawn background worker thread for GCS registration to prevent event loop stalls."""
+        threading.Thread(target=self._beacon_worker, daemon=True).start()
+
+    def _beacon_worker(self):
+        """Non-blocking HTTP registration attempt."""
         try:
             my_ip = self.get_local_ip()
             hostname = socket.gethostname()
@@ -125,11 +146,11 @@ class TeleopModeSwitcher(Node):
             }).encode('utf-8')
 
             req = urllib.request.Request(url, data=payload, headers={'Content-Type': 'application/json'})
-            with urllib.request.urlopen(req, timeout=1.0) as resp:
+            with urllib.request.urlopen(req, timeout=0.5) as resp:
                 if resp.status == 200:
                     self.get_logger().debug(f'Auto-registered with GCS at {url}')
         except Exception:
-            pass  # Silent retry if GCS host not yet reachable
+            pass  # Silent non-blocking fail
 
     def get_local_ip(self):
         try:
