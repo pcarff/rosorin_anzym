@@ -125,6 +125,13 @@ def generate_launch_description():
         arguments=['0.115', '0', '0.13', '0', '0', '0', 'base_link', 'lidar_frame']
     )
 
+    base_to_footprint_tf_node = Node(
+        package='tf2_ros',
+        executable='static_transform_publisher',
+        name='base_to_footprint_tf',
+        arguments=['0', '0', '0', '0', '0', '0', 'base_footprint', 'base_link']
+    )
+
     # 6. Web Video Server for GCS streaming
     web_video_server_node = Node(
         package="web_video_server",
@@ -158,6 +165,7 @@ def generate_launch_description():
         camera_launch,
         lidar_node,
         lidar_tf_node,
+        base_to_footprint_tf_node,
         web_video_server_node,
         telemetry_node,
     ])

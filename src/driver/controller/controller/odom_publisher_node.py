@@ -9,6 +9,7 @@ import threading
 from rclpy.node import Node
 from std_srvs.srv import Trigger
 from nav_msgs.msg import Odometry
+import tf2_ros
 from controller import ackermann, mecanum
 from ros_robot_controller_msgs.msg import MotorsState, SetPWMServoState, PWMServoState
 from geometry_msgs.msg import Pose2D, Pose, Twist, PoseWithCovarianceStamped, TransformStamped
@@ -113,9 +114,9 @@ class Controller(Node):
 
         self.clock = self.get_clock() 
         if self.pub_odom_topic:
-            # self.odom_broadcaster = tf2_ros.TransformBroadcaster(self)            # self.odom_trans = TransformStamped()
-            # self.odom_trans.header.frame_id = self.odom_frame_id
-            # self.odom_trans.child_frame_id = self.base_frame_id
+            self.declare_parameter('pub_odom_tf', True)
+            self.pub_odom_tf = self.get_parameter('pub_odom_tf').value
+            self.odom_broadcaster = tf2_ros.TransformBroadcaster(self)
             
             self.odom = Odometry()
             self.odom.header.frame_id = self.odom_frame_id
@@ -124,7 +125,8 @@ class Controller(Node):
             self.odom.pose.covariance = ODOM_POSE_COVARIANCE
             self.odom.twist.covariance = ODOM_TWIST_COVARIANCE
             
-            self.odom_pub = self.create_publisher(Odometry, 'odom_raw', 1)
+            self.odom_pub = self.create_publisher(Odometry, '/odom', 1)
+            self.odom_raw_pub = self.create_publisher(Odometry, 'odom_raw', 1)
             self.dt = 1.0/50.0
 
             threading.Thread(target=self.cal_odom_fun, daemon=True).start()
@@ -274,6 +276,19 @@ class Controller(Node):
                 self.odom.twist.covariance = ODOM_TWIST_COVARIANCE
 
             self.odom_pub.publish(self.odom)
+            self.odom_raw_pub.publish(self.odom)
+
+            if self.pub_odom_tf:
+                t = TransformStamped()
+                t.header.stamp = self.odom.header.stamp
+                t.header.frame_id = self.odom_frame_id
+                t.child_frame_id = self.base_frame_id
+                t.transform.translation.x = self.odom.pose.pose.position.x
+                t.transform.translation.y = self.odom.pose.pose.position.y
+                t.transform.translation.z = 0.0
+                t.transform.rotation = self.odom.pose.pose.orientation
+                self.odom_broadcaster.sendTransform(t)
+
             self.last_time = self.current_time
             time.sleep(0.02)
 
