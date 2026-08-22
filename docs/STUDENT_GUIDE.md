@@ -159,7 +159,7 @@ Want to test your science and engineering skills? Try these hands-on activities!
 
 ### ⚙️ Experiment 3: Adjust Driving Speed Limits (Computer Science)
 - **Goal**: Learn how software parameters change robot behavior.
-- **Action**: Open [src/peripherals/peripherals/joystick_control.py](file:///home/pcarff/Workspaces/AnZym_ROSOrin/src/peripherals/peripherals/joystick_control.py) and locate:
+- **Action**: Open [src/peripherals/peripherals/joystick_control.py](file:///media/pcarff/Workspaces/AnZym_Robot_System/anzym_rosorin/src/peripherals/peripherals/joystick_control.py) and locate:
   ```python
   self.declare_parameter('max_linear', 0.2) # meters per second
   ```
