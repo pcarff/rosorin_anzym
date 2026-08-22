@@ -131,6 +131,8 @@ Here is what the robot can do right now:
 |---|---|---|
 | 🚗 **Ackermann Driving** | Car-style steering and driving kinematics | Front PWM Servo ID 1 controls steering angle while rear DC motors drive speed |
 | 🕹️ **Wireless Gamepad Control** | Drive using a wireless controller | `joystick_control` node converts joystick axes into ROS 2 `geometry_msgs/msg/Twist` velocity commands |
+| 🗺️ **Autonomous Navigation (Nav2)** | Drive to goal positions automatically | Nav2 plans paths around obstacles using LiDAR and drives the car autonomously |
+| 🎯 **Point & Click Map Targeting** | Click anywhere on GCS to navigate | Web Ground Control Station sends `/goal_pose` and Nav2 navigates to the target |
 | 📺 **Live OLED Telemetry** | Displays status on front screen | `oled_info_node` reads system health, battery voltage, and IP address |
 | 📷 **3D Depth Vision** | Sees objects in 3D | `deptrum-ros-driver` Streams 16-bit depth maps and 3D PointCloud2 data |
 | ⚡ **Automatic Power-On Boot** | Starts automatically on power up | Systemd service `rosorin_bringup.service` starts bringup scripts on boot |
@@ -164,6 +166,16 @@ Want to test your science and engineering skills? Try these hands-on activities!
   self.declare_parameter('max_linear', 0.2) # meters per second
   ```
   Try changing `0.2` (slow) to `0.4` (faster) or `0.1` (super safe mode). Deploy changes with `./manage_workspace.sh deploy` and feel the difference on the gamepad!
+
+### 🚀 Experiment 4: Autonomous "Return Home" and Obstacle Avoidance
+- **Goal**: Test how the robot's artificial intelligence navigates back to its starting spot without hitting objects.
+- **Action**: 
+  1. Open the Ground Control Station at `http://localhost:5173`.
+  2. Drive the robot forward into the room with the gamepad.
+  3. Place a cardboard box in front of the robot.
+  4. Click **"Return Home"** on the screen.
+  5. Watch the robot's LiDAR detect the box, plan a curved path around it, and steer smoothly back to `(0, 0)`!
+  6. Click **"Cancel Goal"** at any time to instantly stop the robot.
 
 ---
 

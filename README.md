@@ -79,7 +79,25 @@ Use the `manage_workspace.sh` script for all workspace build, deployment, and br
 ./manage_workspace.sh clean
 ```
 
-### 2. Workstation RViz2 LIDAR & Robot Visualization
+### 2. Autonomous Navigation & SLAM (Nav2 on ROS 2 Jazzy)
+
+The ROSOrin robot features a fully configured **Nav2 (Navigation 2)** and **SLAM Toolbox** autonomous navigation stack parameterized specifically for **Ackermann steering kinematics**:
+
+```bash
+# Launch autonomous navigation with static map/odom TF
+ros2 launch bringup navigation.launch.py slam:=false autostart:=true
+
+# Launch autonomous navigation with live dynamic SLAM mapping
+ros2 launch bringup navigation.launch.py slam:=true autostart:=true
+```
+
+#### Nav2 Stack Architecture:
+- **Kinematic Model**: Ackermann chassis (`nav2_params_ackermann.yaml`) with Regulated Pure Pursuit / DWB controller.
+- **Direct Lifecycle Management**: Managed nodes (`controller_server`, `smoother_server`, `planner_server`, `behavior_server`, `velocity_smoother`, `collision_monitor`, `bt_navigator`, `waypoint_follower`) orchestrated with custom bond timeouts.
+- **Costmaps & Obstacle Avoidance**: 2D LiDAR (`/scan`) obstacle layer with footprint and inflation radii tuned for Ackermann turning constraints.
+- **Action Interface & GCS Integration**: Full compatibility with `nav2_msgs/action/NavigateToPose` and `/goal_pose`, including zero-velocity cancellation via rosbridge service call to `/navigate_to_pose/_action/cancel_goal`.
+
+### 3. Workstation RViz2 LIDAR & Robot Visualization
 
 To view live 360° LIDAR scan data, 3D point clouds, and robot TF transforms in RViz2 from your workstation:
 
@@ -87,7 +105,7 @@ To view live 360° LIDAR scan data, 3D point clouds, and robot TF transforms in 
 ./scripts/launch_workstation_viz.sh
 ```
 
-### 3. Automatic Power-Up Autostart (Systemd)
+### 4. Automatic Power-Up Autostart (Systemd)
 
 To enable automatic bringup every time the robot powers on:
 

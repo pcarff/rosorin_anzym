@@ -5,6 +5,7 @@ from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, Grou
 from launch.conditions import IfCondition, UnlessCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration
+from launch_ros.actions import Node
 
 def generate_launch_description():
     pkg_bringup = get_package_share_directory('bringup')
@@ -12,6 +13,7 @@ def generate_launch_description():
     pkg_slam_toolbox = get_package_share_directory('slam_toolbox')
 
     default_params_file = os.path.join(pkg_bringup, 'config', 'nav2_params_ackermann.yaml')
+    default_slam_params_file = os.path.join(pkg_bringup, 'config', 'mapper_params_online_async.yaml')
 
     use_sim_time = LaunchConfiguration('use_sim_time')
     autostart = LaunchConfiguration('autostart')
@@ -50,22 +52,121 @@ def generate_launch_description():
     )
 
     # 1. SLAM Toolbox for dynamic online mapping and map -> odom TF
-    slam_launch = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(os.path.join(pkg_slam_toolbox, 'launch', 'online_async_launch.py')),
-        launch_arguments={
-            'use_sim_time': use_sim_time,
-        }.items(),
+    slam_node = Node(
+        package='slam_toolbox',
+        executable='async_slam_toolbox_node',
+        name='slam_toolbox',
+        parameters=[
+            default_slam_params_file,
+            {'use_sim_time': use_sim_time, 'autostart': autostart}
+        ],
+        output='screen',
         condition=IfCondition(slam)
     )
 
-    # 2. Nav2 Navigation Stack
-    nav2_bringup_launch = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(os.path.join(pkg_nav2_bringup, 'launch', 'navigation_launch.py')),
-        launch_arguments={
-            'use_sim_time': use_sim_time,
+    # Fallback static map -> odom transform if SLAM is disabled
+    map_to_odom_static_tf = Node(
+        package='tf2_ros',
+        executable='static_transform_publisher',
+        name='map_to_odom_tf',
+        arguments=['0', '0', '0', '0', '0', '0', 'map', 'odom'],
+        condition=UnlessCondition(slam)
+    )
+
+    # 2. Nav2 Core Nodes
+    controller_server_node = Node(
+        package='nav2_controller',
+        executable='controller_server',
+        output='screen',
+        respawn=False,
+        parameters=[params_file],
+        remappings=[('cmd_vel', 'cmd_vel_nav')]
+    )
+
+    smoother_server_node = Node(
+        package='nav2_smoother',
+        executable='smoother_server',
+        name='smoother_server',
+        output='screen',
+        respawn=False,
+        parameters=[params_file]
+    )
+
+    planner_server_node = Node(
+        package='nav2_planner',
+        executable='planner_server',
+        name='planner_server',
+        output='screen',
+        respawn=False,
+        parameters=[params_file]
+    )
+
+    behavior_server_node = Node(
+        package='nav2_behaviors',
+        executable='behavior_server',
+        name='behavior_server',
+        output='screen',
+        respawn=False,
+        parameters=[params_file]
+    )
+
+    velocity_smoother_node = Node(
+        package='nav2_velocity_smoother',
+        executable='velocity_smoother',
+        name='velocity_smoother',
+        output='screen',
+        respawn=False,
+        parameters=[params_file],
+        remappings=[('cmd_vel', 'cmd_vel_nav')]
+    )
+
+    collision_monitor_node = Node(
+        package='nav2_collision_monitor',
+        executable='collision_monitor',
+        name='collision_monitor',
+        output='screen',
+        respawn=False,
+        parameters=[params_file]
+    )
+
+    bt_navigator_node = Node(
+        package='nav2_bt_navigator',
+        executable='bt_navigator',
+        name='bt_navigator',
+        output='screen',
+        respawn=False,
+        parameters=[params_file]
+    )
+
+    waypoint_follower_node = Node(
+        package='nav2_waypoint_follower',
+        executable='waypoint_follower',
+        name='waypoint_follower',
+        output='screen',
+        respawn=False,
+        parameters=[params_file]
+    )
+
+    lifecycle_manager_node = Node(
+        package='nav2_lifecycle_manager',
+        executable='lifecycle_manager',
+        name='lifecycle_manager_navigation',
+        output='screen',
+        parameters=[{
             'autostart': autostart,
-            'params_file': params_file,
-        }.items()
+            'node_names': [
+                'controller_server',
+                'smoother_server',
+                'planner_server',
+                'behavior_server',
+                'velocity_smoother',
+                'collision_monitor',
+                'bt_navigator',
+                'waypoint_follower'
+            ],
+            'bond_timeout': 10.0,
+            'attempt_respawn_reconnection': True
+        }]
     )
 
     return LaunchDescription([
@@ -74,6 +175,15 @@ def generate_launch_description():
         declare_params_file_cmd,
         declare_slam_cmd,
         declare_map_yaml_cmd,
-        slam_launch,
-        nav2_bringup_launch,
+        map_to_odom_static_tf,
+        slam_node,
+        controller_server_node,
+        smoother_server_node,
+        planner_server_node,
+        behavior_server_node,
+        velocity_smoother_node,
+        collision_monitor_node,
+        bt_navigator_node,
+        waypoint_follower_node,
+        lifecycle_manager_node,
     ])
